@@ -22,11 +22,16 @@ def continuousToNPY(pathToFile):
         recordingNumber = np.array(rawData['recordingNumber'])
         np.savez(f'formatted-lfp/{pathToSave}', timestamps=timestamps, data=data, recordingNumber=recordingNumber)
     else:
-        #data = []
-        #for key in rawData.keys():
-        #    data.append(rawData[key])
-        #data = np.array(data)
-        np.savez(f'formatted-lfp/{pathToSave}', rawData)
+        channel = np.array(rawData['channel'])
+        timestamps = np.array(rawData['timestamps'])
+        eventType = np.array(rawData['eventType'])
+        eventId = np.array(rawData['eventId'])
+        nodeId = np.array(rawData['nodeId'])
+        recordingNumber = np.array(rawData['recordingNumber'])
+        sampleNum = np.array(rawData['sampleNum'])
+
+        np.savez(f'formatted-lfp/{pathToSave}', channel=channel, timestamps=timestamps, eventType=eventType,
+                 nodeId=nodeId, recordingNumber=recordingNumber, eventId=eventId, sampleNumber=sampleNum)
 
 
 
@@ -48,5 +53,5 @@ def recursePaths(directory):
         for path in paths:
             recursePaths(path)
 
-experimentPath = 'Exp 1'
+experimentPath = 'Exp 3'
 recursePaths(experimentPath)  # Supply the starting point for the recursion
