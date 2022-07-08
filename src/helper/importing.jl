@@ -1,3 +1,22 @@
+function import_lfp_events(path, prefix="../../data/", formatted_path="formatted-lfp/")
+    raw_events = npzread("$(prefix)$(formatted_path)$(path)all_channels.npz")
+    delete!(raw_events, "recordingNumber")
+    delete!(raw_events, "sampleNumber")
+    delete!(raw_events, "eventType")
+    delete!(raw_events, "nodeId")
+
+    events = []
+    for event_type in unique(raw_events["channel"])
+        timestamps = raw_events["timestamps"][findall(x->x==event_type, raw_events["channel"])] 
+        activation = raw_events["eventId"][findall(x->x==event_type, raw_events["channel"])]
+        
+        push!(events, Dict("timestamps"=>timestamps, "activation"=>activation))
+    end
+
+    return events
+end
+
+
 # Takes a path to an LFP recording and reads information into a dataframe
 function import_lfp(path, prefix="../../data/", formatted_path="formatted-lfp/")
     # Get the XML metadata file
@@ -16,28 +35,64 @@ function import_lfp(path, prefix="../../data/", formatted_path="formatted-lfp/")
 
     # Add data from each channel/file into a single matrix
     data_channels = [5, 6, 7, 8]
-    n_datapoints = length(npzread("../../data/formatted-lfp/$(path)$(files["filename"][data_channels[1]])", ["data"])["data"])
+    n_datapoints = length(npzread("$(prefix)$(formatted_path)$(path)$(files["filename"][data_channels[1]])", ["data"])["data"])
     data = Array{Float32}(undef, length(data_channels), n_datapoints)
     for i in 1:length(data_channels)
-        data_element = npzread("../../data/formatted-lfp/$(path)$(files["filename"][data_channels[i]])", ["data"])["data"]
+        data_element = npzread("$(prefix)$(formatted_path)$(path)$(files["filename"][data_channels[i]])", ["data"])["data"]
         data_element .*= parse(Float64, files["bitVolts"][data_channels[i]])
         data[i, :] = data_element
     end
 
     # Add timestamps into vector 
     # Timestamps are identical for each channel so this only needs to be done once
-    raw_timestamps = npzread("../../data/formatted-lfp/$(path)$(files["filename"][1])", ["timestamps"])["timestamps"]
+    raw_timestamps = npzread("$(prefix)$(formatted_path)$(path)$(files["filename"][1])", ["timestamps"])["timestamps"]
 
     # Creating a timestamp for each datapoint uniformly between the start and end timestamps 
-    timestamps = collect(range(raw_timestamps[1], raw_timestamps[end]+1024, n_datapoints))    
+    timestamps = collect(range(raw_timestamps[1], raw_timestamps[end]+1024, n_datapoints))
+
+    # Import events
+    events = import_lfp_events(path)
 
     # Collect all LFP attributes into dictionary structure
-    lfp_data = Dict("data"=>data, "timestamps"=>timestamps)
+    lfp_data = Dict("data"=>data, "timestamps"=>timestamps, "events"=>events)
 
     return lfp_data
 end
 
+
 # Takes a path to an O2 file and reads information into a dataframe
 function import_o2(path, prefix="../../data/")
+    raw_data = []
 
+    # Read data line by line
+    open("$(prefix)$(path)") do file
+        for line in eachline(file)
+            if isdigit(line[1])
+                # data_element = [timestamp, o2 data, sync flag, heat flag]
+                data_element = split(line, "\t")  
+                if length(data_element) == 3 && data_element[3] == "#* timeTick ON "
+                    data_element = [parse(Float32, data_element[1]), parse(Float32, data_element[2]), 1, 0]
+                elseif length(data_element) == 3 && data_element[3] == "#* heatStim ON "
+                    data_element = [parse(Float32, data_element[1]), parse(Float32, data_element[2]), 0, 1]
+                else
+                    data_element = [parse(Float32, data_element[1]), parse(Float32, data_element[2]), 0, 0]
+                end
+                push!(raw_data, data_element)
+            end
+        end
+    end
+    raw_data = reduce(vcat,transpose.(raw_data))
+    
+    # Get lists of timestamps for each event
+    sync = raw_data[findall(x->x==1, raw_data[:,3]), 1]
+    laser = raw_data[findall(x->x==1, raw_data[:,4]), 1]
+
+    # Extract data/timestamps into individual vectors
+    data = raw_data[:, 2]
+    timestamps = raw_data[:, 1]
+
+    # Collect all O2 attributes into dictionary structure
+    o2_data = Dict("timestamps"=>timestamps, "data"=>data, "sync"=>sync, "laser"=>laser)
+
+    return o2_data
 end
