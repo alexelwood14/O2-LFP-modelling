@@ -1,3 +1,6 @@
+using NPZ
+using EzXML
+
 function import_lfp_events(path, prefix="../../data/", formatted_path="formatted-lfp/")
     raw_events = npzread("$(prefix)$(formatted_path)$(path)all_channels.npz")
     delete!(raw_events, "recordingNumber")
@@ -5,12 +8,17 @@ function import_lfp_events(path, prefix="../../data/", formatted_path="formatted
     delete!(raw_events, "eventType")
     delete!(raw_events, "nodeId")
 
-    events = []
+    type_mapping = Dict(0.0=>"laser", 4.0=>"sync", 7.0=>"oxygen")
+
+    events = Dict()
     for event_type in unique(raw_events["channel"])
         timestamps = raw_events["timestamps"][findall(x->x==event_type, raw_events["channel"])] 
         activation = raw_events["eventId"][findall(x->x==event_type, raw_events["channel"])]
+
+        on = timestamps[findall(x->x==1, activation)]
+        off = timestamps[findall(x->x==0, activation)]
         
-        push!(events, Dict("timestamps"=>timestamps, "activation"=>activation))
+        events[type_mapping[event_type]] = Dict("on"=>on, "off"=>off)
     end
 
     return events
@@ -48,13 +56,13 @@ function import_lfp(path, prefix="../../data/", formatted_path="formatted-lfp/")
     raw_timestamps = npzread("$(prefix)$(formatted_path)$(path)$(files["filename"][1])", ["timestamps"])["timestamps"]
 
     # Creating a timestamp for each datapoint uniformly between the start and end timestamps 
-    timestamps = collect(range(raw_timestamps[1], raw_timestamps[end]+1024, n_datapoints))
+    timestamps = round.(collect(range(raw_timestamps[1], raw_timestamps[end]+1024, n_datapoints)))
 
     # Import events
     events = import_lfp_events(path)
 
     # Collect all LFP attributes into dictionary structure
-    lfp_data = Dict("data"=>data, "timestamps"=>timestamps, "events"=>events)
+    lfp_data = Dict("data"=>data, "timestamps"=>timestamps, "laser"=>events["laser"], "oxygen"=>events["oxygen"], "sync"=>events["sync"])
 
     return lfp_data
 end
@@ -84,12 +92,12 @@ function import_o2(path, prefix="../../data/")
     raw_data = reduce(vcat,transpose.(raw_data))
     
     # Get lists of timestamps for each event
-    sync = raw_data[findall(x->x==1, raw_data[:,3]), 1]
-    laser = raw_data[findall(x->x==1, raw_data[:,4]), 1]
+    sync = raw_data[findall(x->x==1, raw_data[:,3]), 1] .* 1000
+    laser = raw_data[findall(x->x==1, raw_data[:,4]), 1] .* 1000
 
     # Extract data/timestamps into individual vectors
     data = raw_data[:, 2]
-    timestamps = raw_data[:, 1]
+    timestamps = raw_data[:, 1] .* 1000
 
     # Collect all O2 attributes into dictionary structure
     o2_data = Dict("timestamps"=>timestamps, "data"=>data, "sync"=>sync, "laser"=>laser)
