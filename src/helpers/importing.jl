@@ -3,6 +3,7 @@ using EzXML
 
 function import_lfp_events(path, prefix="../../data/", formatted_path="formatted-lfp/")
     raw_events = npzread("$(prefix)$(formatted_path)$(path)all_channels.npz")
+
     delete!(raw_events, "recordingNumber")
     delete!(raw_events, "sampleNumber")
     delete!(raw_events, "eventType")
@@ -19,6 +20,13 @@ function import_lfp_events(path, prefix="../../data/", formatted_path="formatted
         off = timestamps[findall(x->x==0, activation)]
         
         events[type_mapping[event_type]] = Dict("on"=>on, "off"=>off)
+    end
+
+    # Add empty lists if flag present in data
+    for value in values(type_mapping)
+        if !haskey(events, value)
+            events[value] = Dict("on"=>[], "off"=>[])
+        end
     end
 
     return events
