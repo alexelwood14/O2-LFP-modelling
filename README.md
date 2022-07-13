@@ -11,6 +11,10 @@ All notebooks are contained in [src/notebooks](src/notebooks/).
 - [synchronisation.ipynb](src/notebooks/synchronisation.ipynb) contains code to try to realign the timestamps between O2 and LFP data. Both data recordings contain a flag every 10s to aid in synchronising the data.
 - [autocorrelation.ipynb](src/notebooks/autocorrelation.ipynb) contains code to display the temporal autocorrelogram of O2 and LFP data. This should explore the theory that heart rate and respiratory rate should shot a temporal autocorrelation at offsets of equal period.
 - [enveloping.ipynb](src/notebooks/enveloping.ipynb) takes the LFP data, bands it into a specific frequency range and then computes and displays its analytic envelope.
+- [laser-stim-feature](src/notebooks/laser-stim-feature.ipynb) is an attempt finding a correlation between the LFP and O2 features after the laser stimulation events. 
+- [aim1](src/notebooks/aim1.ipynb) is an attempt to create a model to compete Aim 1: "Make a formal description of the relationships between oxygen amperometric signals (<1hz) and local field potentials (LFP) (typically 1-80Hz) recorded simultaneously on separate electrodes."
+
+## Usage
 
 ### Running Notebooks
 
@@ -26,3 +30,7 @@ julia> using IJulia
 julia> notebook()
 ```
 4. Jupyter should open in the browser.
+
+### Importing Data
+
+Data should be placed in a directory called data in the root directory of this repository. Edit path and filename variables within the notebooks to match how the data is stored.
