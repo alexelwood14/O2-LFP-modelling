@@ -13,6 +13,7 @@ All notebooks are contained in [src/notebooks](src/notebooks/).
 - [enveloping.ipynb](src/notebooks/enveloping.ipynb) takes the LFP data, bands it into a specific frequency range and then computes and displays its analytic envelope.
 - [laser-stim-feature](src/notebooks/laser-stim-feature.ipynb) is an attempt finding a correlation between the LFP and O2 features after the laser stimulation events. 
 - [aim1](src/notebooks/aim1.ipynb) is an attempt to create a model to compete Aim 1: "Make a formal description of the relationships between oxygen amperometric signals (<1hz) and local field potentials (LFP) (typically 1-80Hz) recorded simultaneously on separate electrodes."
+- [leaky-integrator](src/notebooks/leaky-integrator.ipynb) creates an implementation of a leaky integrator which can be used to smooth a higher frequency signal so that it can be compared with a lower frequency signal. This will be used throughout the analysis, and especially regarding aim1.
 
 ## Usage
 
