@@ -1,5 +1,6 @@
 # Smooths a signal S with lag coefficient k
-function leaky_integrator(S; k=0.5)
+function leaky_integrator(S; k=0.5, sample_rate=1000)
+    dt = 1 / sample_rate
     t = (1:length(S))
     
     y = zeros(length(t))
