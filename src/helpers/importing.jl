@@ -55,7 +55,6 @@ function import_lfp(path, prefix="../../data/", formatted_path="formatted-lfp/")
     data = Array{Float32}(undef, length(data_channels), n_datapoints)
     for i in 1:length(data_channels)
         data_element = npzread("$(prefix)$(formatted_path)$(path)$(files["filename"][data_channels[i]])", ["data"])["data"]
-        data_element .*= parse(Float64, files["bitVolts"][data_channels[i]])
         data[i, :] = data_element
     end
 
