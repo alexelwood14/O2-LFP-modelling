@@ -50,11 +50,12 @@ function import_lfp(path, prefix="../../data/", formatted_path="formatted-lfp/")
     end
 
     # Add data from each channel/file into a single matrix
-    data_channels = [15, 16, 17, 18]
+    data_channels = [15,16,17,18]
     n_datapoints = length(npzread("$(prefix)$(formatted_path)$(path)$(files["filename"][data_channels[1]])", ["data"])["data"])
     data = Array{Float32}(undef, length(data_channels), n_datapoints)
     for i in 1:length(data_channels)
         data_element = npzread("$(prefix)$(formatted_path)$(path)$(files["filename"][data_channels[i]])", ["data"])["data"]
+        data_element .*= parse(Float64, files["bitVolts"][data_channels[i]])
         data[i, :] = data_element
     end
 
