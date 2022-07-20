@@ -4,22 +4,24 @@ This project aims to use a Bayesian model to relate Amperometric Oxygen data and
 
 ## Notebooks
 
-All notebooks are contained in [src/notebooks](src/notebooks/). The following notebooks have been used to develop techniques used in the processing and analysis of the data:
+All notebooks are contained in [src/notebooks](src/notebooks/). The following notebooks directly investigate the main research aims:
+
+- [aim1.ipynb](src/notebooks/aim1.ipynb) is an attempt to create a model to compete Aim 1: "Make a formal description of the relationships between oxygen amperometric signals (<1hz) and local field potentials (LFP) (typically 1-80Hz) recorded simultaneously on separate electrodes."
+- [aim2.ipynb](src/notebooks/aim2.ipynb) is an attempt to answer Aim 2: "Investigate whether high frequency components of oxygen amperometric signals (>1Hz) are equivalent LFP signals?"
+
+
+The following notebooks develop techniques used in the processing and analysis of the data:
 
 - [visualisations.ipynb](src/notebooks/visualisations.ipynb) contains code to import the raw LFP and O2 data into Julia and visualise it using some basic plots.
 - [filtering.ipynb](src/notebooks/filtering.ipynb) contains code to compute the Fourier transform of O2 data and apply high/low pass filtering. This will be useful later as modelling will involve working with only high/low frequency components of the O2 data. 
 - [enveloping.ipynb](src/notebooks/enveloping.ipynb) takes the LFP data, bands it into a specific frequency range and then computes and displays its analytic envelope.
 - [leaky-integrator.ipynb](src/notebooks/leaky-integrator.ipynb) creates an implementation of a leaky integrator which can be used to smooth a higher frequency signal so that it can be compared with a lower frequency signal. This will be used throughout the analysis, and especially regarding aim1.
 
-The following notebooks have been used to better understand and initially investigate the dataset:
+The following notebooks initially investigate and aim to give a better understand the dataset:
 
 - [synchronisation.ipynb](src/notebooks/synchronisation.ipynb) contains code to try to realign the timestamps between O2 and LFP data. Both data recordings contain a flag every 10s to aid in synchronising the data.
-- [autocorrelation.ipynb](src/notebooks/autocorrelation.ipynb) contains code to display the temporal autocorrelogram of O2 and LFP data. This should explore the theory that heart rate and respiratory rate should shot a temporal autocorrelation at offsets of equal period.
-- [laser-stim-feature.ipynb](src/notebooks/laser-stim-feature.ipynb) is an attempt finding a correlation between the LFP and O2 features after the laser stimulation events. (now obsolete)
+- [autocorrelation.ipynb](src/notebooks/autocorrelation.ipynb) contains code to display the temporal autocorrelogram of O2 and LFP data. This should explore the theory that heart rate and respiratory rate should show a temporal autocorrelation at constant offsets.
 
-The following notebooks directly investigate the main research aims:
-
-- [aim1.ipynb](src/notebooks/aim1.ipynb) is an attempt to create a model to compete Aim 1: "Make a formal description of the relationships between oxygen amperometric signals (<1hz) and local field potentials (LFP) (typically 1-80Hz) recorded simultaneously on separate electrodes."
 
 ## Helper functions
 
@@ -44,7 +46,7 @@ $ Julia
 julia> using IJulia
 julia> notebook()
 ```
-4. Jupyter should open in the browser.
+4. Jupyter should open in the browser. Navigate to the desired notebook.
 
 ### Importing Data
 
