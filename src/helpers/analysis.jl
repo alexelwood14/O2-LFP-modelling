@@ -10,13 +10,16 @@ Random.seed!(123)
 
 # Gets a sample from the posterior
 function posteriorSample(chain)
-    parms = chain.name_map.parameters
     idx = rand(1:length(chain))
-    return map(x->chain[x].value[idx] , parms)
+    sample = Dict()
+    for name in chain.name_map.parameters
+        sample[name] = get(chain; section=:parameters)[name][idx]
+    end
+    return sample
 end
 
 # Generate posterior predictive samples
-function getPredictions(chain, x, mu_formula, p_map; param=ones(length(x)), n_samples_per_x=1000)
+function getPredictions(chain, x, mu_formula; n_samples_per_x=1000)
     # Get samples of parameters
     postSample = [posteriorSample(chain) for i in 1:n_samples_per_x]
     
@@ -25,8 +28,8 @@ function getPredictions(chain, x, mu_formula, p_map; param=ones(length(x)), n_sa
     for i in 1:length(x)
         pred_i = []
         for sample in postSample
-            mu = mu_formula(x[i], sample, p_map, param[i])
-            post = rand(Normal(mu, sample[p_map("sigma")]), 1)[1]
+            mu = mu_formula(x[i], sample)
+            post = rand(Normal(mu, sample[:sigma]), 1)[1]
             push!(pred_i, post)
         end
         push!(predictions, pred_i)
@@ -49,6 +52,7 @@ function avg_residual_error(x, y)
     return sum(abs.(x - y))/length(x)
 end
 
+# Split the data into folds to support cross-validation
 function generate_folds(x, y; n_folds=4)
     # Randomly permute the order of samples
     xy_pairs = [[x[i], y[i]] for i in 1:length(x)]
@@ -56,18 +60,18 @@ function generate_folds(x, y; n_folds=4)
 
     # Randomly make n_folds ideally even folds from the data
     fold_size::Int = floor(length(y)/n_folds)
-    print(fold_size)
-    start = 1
     folds = []
     
-    for i in 1:fold_size:(n_folds-1)*fold_size
-        println("pushing $(start)+$(i):$(start)+$(fold_size)+$(i)")
-        println("pushing $(xy_pairs[start+i:start+fold_size+i])")
-        push!(folds, xy_pairs[start+i:start+fold_size+i])
+    # Push as many equally sized pairs into each fold as possible
+    for i in 1:fold_size:n_folds*fold_size
+        push!(folds, xy_pairs[i:fold_size+i-1])
     end
+
+    # If the number of pairs is not divisible by fold size push leftover pairs as evenly as possible
     if length(y) % fold_size != 0
-        println("pushing last")
-        push!(folds[length(folds)], xy_pairs[length(xy_pairs)])
+        for i in fold_size*n_folds+1:length(xy_pairs)
+            push!(folds[i%n_folds], xy_pairs[i])
+        end
     end 
 
     return folds
@@ -75,35 +79,46 @@ end
 
 
 # Performs k-fold cross validation
-function k_fold_CV(model, x, y, p_map, mu_formula; params=nothing, n_folds=4)
+function k_fold_CV(model, x, y, mu_formula; params=nothing, n_folds=4, threads=4, chain_length=1000, n_samples_per_x=100)
     # Generating Folds
+    # folds[fold][pair][x/y][datapoint]
+    # x = [i for i in 1:13]
+    # y = [i for i in 1:13]
     folds = generate_folds(x, y; n_folds=n_folds)
 
     chains = []
     residuals = []
-    for i in 1:4
-        # Run model for each combination of 3 train folds
-        println("Sampling Fold $(i):")
-        train = vcat(pop(folds, folds[i]))
-        x_train = train[1, :] 
-        y_train = train[2, :] 
-        printlln("\tTraining Model")
+    for i in 1:n_folds
+        # Get training folds
+        println("Sampling Fold Combination $(i) of $(n_folds):")
+        train = []
+        for j in 1:n_folds
+            if j != i
+                push!(train, folds[j])
+            end
+        end
+        x_train = [train[k][l][1][d] for k in 1:length(train) for l in 1:length(train[k]) for d in 1:length(train[k][l][1])]
+        y_train = [train[k][l][2][d] for k in 1:length(train) for l in 1:length(train[k]) for d in 1:length(train[k][l][1])]
+
+        # Run model with training folds
+        println("\tTraining Model")
+
         md = model(y_train, x_train, params)
-        chain = sample(md, NUTS(0.65), MCMCThreads(), 1000, 4)
+        chain = sample(md, NUTS(0.65), MCMCThreads(), chain_length, threads)
         push!(chains, chain)
 
         # Generate Posterior Predictive Distribution
         println("\tGenerating Posterior Predictive Distribution")
-        x_test = folds[i][1]
-        y_test = folds[i][2]
-        predictions = getPredictions(chain, x_test, mu_formula, p_map; param=params)
+        x_test = [folds[i][k][1][d] for k in 1:length(folds[i]) for d in 1:length(folds[i][k][1])]
+        y_test = [folds[i][k][2][d] for k in 1:length(folds[i]) for d in 1:length(folds[i][k][2])]
+        predictions = getPredictions(chain, x_test, mu_formula; n_samples_per_x=n_samples_per_x)
 
         # Get average residual value from respective test fold
         println("\tCaclulating Residual Error")
         x_pred_means = [mean(predictions[i]) for i in 1:length(predictions)]
-        push!(avg_residual_error(x_pred_means, y_test))    
+        push!(residuals, avg_residual_error(x_pred_means, y_test))    
     end
 
     # Return average of all residual values and best fold and chain
-    return mean(residuals)
+    return Dict("chains"=>chains, "residuals"=>residuals)
 end
