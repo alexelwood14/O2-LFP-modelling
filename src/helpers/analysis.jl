@@ -8,6 +8,12 @@ using Distributions
 using Random
 Random.seed!(123)
 
+function posteriorSampleOld(chain)
+    parms = chain.name_map.parameters
+    idx = rand(1:length(chain))
+    return map(x->chain[x].value[idx] , parms)
+end
+
 # Gets a sample from the posterior
 function posteriorSample(chain)
     idx = rand(1:length(chain))
