@@ -36,7 +36,7 @@ function getPredictions(chain, x, mu_formula; n_samples_per_x=1000, old=false)
         for sample in postSample
             mu = mu_formula(x[i], sample, nothing)
             if old
-                post = rand(Normal(mu, sample[3]), 1)[1]
+                post = rand(Normal(mu, sample[6]), 1)[1]
             else
                 post = rand(Normal(mu, sample[:sigma]), 1)[1]
             end
