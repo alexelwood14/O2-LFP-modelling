@@ -112,8 +112,15 @@ function avg_k_fold_CV(model, x, y, mu_formula; params=nothing, n_folds=4, threa
         
         # Run model with training folds
         println("\tTraining Model")
-
-        md = model(y_train, x_train, params)
+        extended_params = []
+        if !isnothing(params)
+            for i in 1:div(length(x), n_folds)
+                for j in eachindex(params)
+                    push!(extended_params, params[j]) 
+                end
+            end
+        end
+        md = model(y_train, x_train, extended_params)
         chain = sample(md, NUTS(0.65), MCMCThreads(), chain_length, threads)
         push!(chains, chain)
 
