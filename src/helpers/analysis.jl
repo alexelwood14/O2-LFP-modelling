@@ -8,34 +8,38 @@ using Distributions
 using Random
 Random.seed!(123)
 
-function posteriorSampleOld(chain)
-    parms = chain.name_map.parameters
-    idx = rand(1:length(chain))
-    return map(x->chain[x].value[idx] , parms)
-end
-
 # Gets a sample from the posterior
-function posteriorSample(chain)
-    idx = rand(1:length(chain))
-    sample = Dict()
-    for name in chain.name_map.parameters
-        sample[name] = get(chain; section=:parameters)[name][idx]
+function posteriorSample(chain; old=false)
+    if old
+        parms = chain.name_map.parameters
+        idx = rand(1:length(chain))
+        return map(x->chain[x].value[idx] , parms)
+    else
+        idx = rand(1:length(chain))
+        sample = Dict()
+        for name in chain.name_map.parameters
+            sample[name] = get(chain; section=:parameters)[name][idx]
+        end
+        return sample
     end
-    return sample
 end
 
 # Generate posterior predictive samples
-function getPredictions(chain, x, mu_formula; n_samples_per_x=1000)
+function getPredictions(chain, x, mu_formula; n_samples_per_x=1000, old=false)
     # Get samples of parameters
-    postSample = [posteriorSample(chain) for i in 1:n_samples_per_x]
+    postSample = [posteriorSample(chain; old=old) for i in 1:n_samples_per_x]
     
     # Get posterior predictive samples for each parameter combination for each x
     predictions = []
     for i in 1:length(x)
         pred_i = []
         for sample in postSample
-            mu = mu_formula(x[i], sample)
-            post = rand(Normal(mu, sample[:sigma]), 1)[1]
+            mu = mu_formula(x[i], sample, nothing)
+            if old
+                post = rand(Normal(mu, sample[3]), 1)[1]
+            else
+                post = rand(Normal(mu, sample[:sigma]), 1)[1]
+            end
             push!(pred_i, post)
         end
         push!(predictions, pred_i)
@@ -83,13 +87,57 @@ function generate_folds(x, y; n_folds=4)
     return folds
 end
 
-
-# Performs k-fold cross validation
-function k_fold_CV(model, x, y, mu_formula; params=nothing, n_folds=4, threads=4, chain_length=1000, n_samples_per_x=100)
+function avg_k_fold_CV(model, x, y, mu_formula; params=nothing, n_folds=4, threads=4, chain_length=1000, n_samples_per_x=100, old=false)
     # Generating Folds
     # folds[fold][pair][x/y][datapoint]
-    # x = [i for i in 1:13]
-    # y = [i for i in 1:13]
+    folds = generate_folds(x, y; n_folds=n_folds)
+    avg_x = [mean(folds[i][:][1]) for i in 1:n_folds]
+    avg_y = [mean(folds[i][:][2]) for i in 1:n_folds]
+
+    chains = []
+    residuals = []
+    for i in 1:n_folds
+        # Get training folds
+        println("Sampling Fold Combination $(i) of $(n_folds):")
+        x_train = []
+        y_train = []
+        for j in 1:n_folds
+            if j != i
+                push!(x_train, avg_x[j])
+                push!(y_train, avg_y[j])
+            end
+        end
+        x_train = [x_train[i][j] for i in 1:length(x_train) for j in 1:length(x_train[i])]
+        y_train = [y_train[i][j] for i in 1:length(y_train) for j in 1:length(y_train[i])]
+        
+        # Run model with training folds
+        println("\tTraining Model")
+
+        md = model(y_train, x_train, params)
+        chain = sample(md, NUTS(0.65), MCMCThreads(), chain_length, threads)
+        push!(chains, chain)
+
+        # Generate Posterior Predictive Distribution
+        println("\tGenerating Posterior Predictive Distribution")
+        x_test = avg_x[i] 
+        y_test = avg_y[i]
+        predictions = getPredictions(chain, x_test, mu_formula; n_samples_per_x=n_samples_per_x, old=old)
+
+        # Get average residual value from respective test fold
+        println("\tCaclulating Residual Error")
+        x_pred_means = [mean(predictions[i]) for i in 1:length(predictions)]
+        push!(residuals, avg_residual_error(x_pred_means, y_test))
+    end
+
+    # Return average of all residual values and best fold and chain
+    return Dict("chains"=>chains, "residuals"=>residuals)
+end
+
+
+# Performs k-fold cross validation
+function k_fold_CV(model, x, y, mu_formula; params=nothing, n_folds=4, threads=4, chain_length=1000, n_samples_per_x=100, old=false)
+    # Generating Folds
+    # folds[fold][pair][x/y][datapoint]
     folds = generate_folds(x, y; n_folds=n_folds)
 
     chains = []
@@ -117,7 +165,7 @@ function k_fold_CV(model, x, y, mu_formula; params=nothing, n_folds=4, threads=4
         println("\tGenerating Posterior Predictive Distribution")
         x_test = [folds[i][k][1][d] for k in 1:length(folds[i]) for d in 1:length(folds[i][k][1])]
         y_test = [folds[i][k][2][d] for k in 1:length(folds[i]) for d in 1:length(folds[i][k][2])]
-        predictions = getPredictions(chain, x_test, mu_formula; n_samples_per_x=n_samples_per_x)
+        predictions = getPredictions(chain, x_test, mu_formula; n_samples_per_x=n_samples_per_x, old=old)
 
         # Get average residual value from respective test fold
         println("\tCaclulating Residual Error")
