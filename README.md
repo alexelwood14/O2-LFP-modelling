@@ -25,11 +25,12 @@ The following notebooks initially investigate and aim to give a better understan
 
 ## Helper functions
 
-As the notebooks have developed, some data processing methods have been used multiple times. To avoid duplicated code segments, these methods have been moved into separate files to be imported as required.
+As the notebooks have developed, some data processing methods have been used multiple times. To avoid duplicated code segments, these methods have been moved into separate files to be imported as required. These files can be found in [src/helpers](src/helpers/)
 
 - [importing.jl](src/helpers/importing.jl) contains the functions needed to import the raw data, and it specific to our dataset. This code has been moved across from [visualisations.ipynb](src/notebooks/visualisations.ipynb)
 - [filtering.jl](src/helpers/filtering.jl) contains preprocessing functions that will be applied to the data, including a leaky integrator and enveloping. This code has been moved across from notebooks [leaky-integrator.ipynb](src/notebooks/leaky-integrator.ipynb) and [enveloping.ipynb](src/notebooks/enveloping.ipynb).
 - [analysis.jl](src/helpers/analysis.jl) contains the functions needed to analyse chains produced by models. This code has been moved across from  [aim1.ipynb](src/notebooks/aim1.ipynb)
+- [models.jl](src/helpers/models.jl) contains all models defined in Turing so that they can be reused in other notebooks within this project. See [MODELS.md](MODELS.md) for formal definitions of all the models in this project.
 
 ## Usage
 
