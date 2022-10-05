@@ -128,12 +128,14 @@ function avg_k_fold_CV(model, x, y, mu_formula; params=nothing, n_folds=4, threa
         println("\tGenerating Posterior Predictive Distribution")
         x_test = avg_x[i] 
         y_test = avg_y[i]
-        predictions = getPredictions(chain, x_test, mu_formula; n_samples_per_x=n_samples_per_x, old=old)
+        predictions_test = getPredictions(chain, x_test, mu_formula; n_samples_per_x=n_samples_per_x, old=old)
+        predictions_train = getPredictions(chain, x_train, mu_formula; n_samples_per_x=n_samples_per_x, old=old)
 
         # Get average residual value from respective test fold
         println("\tCaclulating Residual Error")
-        x_pred_means = [mean(predictions[i]) for i in 1:length(predictions)]
-        push!(residuals, avg_residual_error(x_pred_means, y_test))
+        x_test_pred_means = [mean(predictions_test[i]) for i in eachindex(predictions_test)]
+        x_train_pred_means = [mean(predictions_train[i]) for i in eachindex(predictions_train)]
+        push!(residuals, Dict("test" => avg_residual_error(x_test_pred_means, y_test), "train" => avg_residual_error(x_train_pred_means, y_train)))
     end
 
     # Return average of all residual values and best fold and chain
